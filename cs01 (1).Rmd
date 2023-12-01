@@ -1,0 +1,1082 @@
+---
+title: "Biomarkers of Recent Cannabis Use"
+author: "Yutong Guo, Tengyue Wang, Shivani Suthar"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes 
+  pdf_document:
+    toc: yes
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+# control global Rmd chunk settings
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
+## Introduction
+
+Since it was first legalized for medical use in California in 1996
+(Department of Cannabis Control - State of California, 2023), there have
+been many initiatives to increase the legalization of cannabis in the
+United States for both medical and recreational purposes. Today, there
+are 38 states in which cannabis use for medical purposes is legal and 24
+states in which cannabis use for recreational purposes is legal
+(National Conference of State Legislatures, 2023). Furthermore, cannabis
+use among young adults has increased from 17% in 2011 to 29% in 2001
+nationally (U.S. Department of Health and Human Services, 2022). With
+this increase in legalization and use, there comes a need to update
+policies and laws regarding cannabis in other sectors of society such as
+driving. Similar to driving laws regarding alcohol, there must also be
+laws regarding cannabis in order to ensure the safety of everyone on the
+road. After years of research, it is now well established that for
+driving, having a blood alcohol concentration (BAC) of 0.08% or lower is
+necessary to be safe. (California DMV, 2023). A similar law of a
+comparable magnitude for cannabis however, is difficult to establish for
+a few reasons. First, relative to alcohol, cannabis use and legalization
+has only recently increased so there has not been as much research on
+establishing safe driving laws for cannabis. Second, there are many
+factors involved in how cannabis metabolizes and can vary greatly
+between users making it difficult to establish common laws. Currently,
+most states either have "per se" laws or zero-tolerance laws for
+cannabis. In states with per se laws, it is illegal to drive with a
+certain level or higher of THC (the active ingredient in cannabis that
+causes a "high") in your blood. Most of these states use cutoffs ranging
+from 1 to 5 ng/mL THC in blood (Arkell et a., 2020). In states with zero
+tolerance laws, it is illegal to drive with any amount of THC in your
+blood. Some states even look at certain metabolites in your blood that
+are associated with cannabis use (Arkell et a., 2020). While the per se
+laws seem to be the most "fair" since they allow tolerance for cannabis
+users, they are not perfect. This is because THC and certain metabolites
+can be detected in blood for weeks to months after use and this wouldn't
+necessarily indicate that a driver is impaired and unsafe to others on
+the road - in fact, previous research has shown that at least on driving
+simulators, users are no longer considered impaired just 3 hours after
+use (Ellis, 2023). In addition, THC concentrations remain detectable in
+frequent users longer than occasional users (Bergamaschi et al., 2013).
+Hence, if solely THC concentrations are being used to incriminate
+someone of endangerment while driving without considering how recently
+they used it, this could wrongly incriminate someone as they may not
+actually be "high" and it could also discriminate further against more
+frequent users. Thus, it would be beneficial to create policies that
+determine impairment based on whether or not someone smoked recently
+rather than the THC concentration cutoffs that are being used now.
+
+In this project, we aim to address this pitfall in current cannabis
+driving laws by analyzing data from a study that assessed how recent
+cannabis smoking influences cannabis user's performances on a driving
+simulator test (Hubbard et al., 2021). More specifically, in this study,
+self-reported cannabis smokers were categorized as "frequent" (those who
+smoke 4 times or more a week) and "infrequent" (those who smoke less
+than 4 times a week) and during the experiment, were given either a
+"placebo" (0.02%), "low-dose" (containing 5.90% THC), or
+"high-dose"(containing 13.40% THC) joint to smoke. After smoking, over
+the next 6 hours, the participants were periodically given a driving
+simulator test to test impairment levels and samples of their blood,
+oral fluid, and breath tests were also taken to measure levels of
+certain compounds including THC and THC metabolites. Before the
+experiment, participants were trained on the driving simulator test and
+were asked to refrain from smoking 2 days prior to the experiment (this
+was tested by seeing if their oral fluid THC concentration were 5 ng/mL
+or above on day of study and if it was, they weren't included in the
+experiment) to ensure that all participants were at the same baseline
+for their driving simulator test skills and THC levels before the
+experiment began. More specifically, in this project, we will be
+analyzing the data obtained from the blood, oral fluid, and breath tests
+from this study in order to determine the best biomarker indicative of
+recent cannabis use.
+
+Overall, the primary motivation behind our project is to help inform
+driving laws regarding cannabis so that 1) everyone is safe on the road
+and 2) people are not wrongly incriminated at roadside for endangering
+others even if they are not actually impaired. Furthermore, we would
+like to extend this investigation by looking into the co-occurrence of
+cannabis use with other hard drugs because understanding these patterns
+is crucial for informing comprehensive policies on impaired driving.
+This is because when stopped at the roadside, it could be beneficial for
+officers to know the likelihood that the driver may have used other hard
+drugs to make further drug testing more efficient and targeted. By
+understanding the co-occurrence of cannabis use with other hard drugs,
+law enforcement can better prioritize testing procedures, ensuring a
+more focused approach in identifying potential substance-related
+impairments. This not only enhances the efficiency of roadside testing
+but also contributes to more informed decision-making regarding the
+necessity for comprehensive drug assessments. By answering the
+question - How does the frequency of cannabis use correlate with the use
+of other hard drugs for people of ages 15-64 (as these are typical
+driving ages)? - we aim to provide a broader context for our primary
+investigation into recent cannabis use's impact on driving performance.
+
+## Questions
+
+As discussed above, the primary question we aim to address in this
+project is 1) Which compound, in which matrix, and at what cutoff is the
+best biomarker of recent use?
+
+In this question, "compound" refers to the chemical compounds in ones
+blood, "matrix" refers to the 3 data tables we will be working with -
+blood, oral fluid, and breath, and "cutoff" refers to the level of the
+compound a driver can have in them.
+
+Answering this question will help to inform driving laws regarding
+cannabis because it would 1) help determine which testing method
+officers should use at roadside (blood test, oral fluid, or breath
+test), 2) help determine what compound is the most important to look
+for, and 3) help determine the level of that compound one can have in
+their body that would indicate that they smoked recently and are
+actually impaired.
+
+As discussed above, the secondary question we aim to address in this
+project is 2) How does the frequency of cannabis use correlate with the
+use of other hard drugs for people of ages 15-64?
+
+## The Data
+
+As mentioned, the data we will be working with in this project include
+data obtained from the blood, oral fluid, and breath tests of the study
+mentioned. Below, we will complete some pre-processing of the data so
+that it is easy to work with and then, we will display the data and
+explain its components.
+
+### Load packages
+
+Here, we are loading necessary R packages required to work with our data
+
+```{r load-packages, message=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(dplyr)
+library(forcats)
+library(tidyr)
+library(ggplot2)
+library(pROC)
+```
+
+### Data Import
+
+Here, we are importing the data
+
+Please note: Here, "WB" stands for whole blood and is where the blood
+collection data will be stored. "BR" stands for breath and is where the
+breath test data will be stored. "OF" stands for oral fluid and is where
+the the oral fluid data will be stored
+
+```{r}
+WB <- read_csv("data/Blood.csv")
+BR <- read_csv("data/Breath.csv")
+OF <- read_csv("data/OF.csv")
+```
+
+### Data Wrangling
+
+Here, we are wrangling the data following the instructions in class to
+ensure consistency and clarity in the representation of treatment groups
+and user categories across multiple data sets. This involves recoding
+the levels of categorical variables such as treatment dosages and user
+frequency in OF, WB, and BR data frames. Specifically, the treatment
+percentages are standardized to a uniform format, and user groups are
+relabeled to more accurately reflect their experience levels.
+Additionally, the fct_relevel function is used to reorder treatment
+levels for analytic convenience. The janitor::clean_names() function
+standardizes column names for uniformity, and the rename function is
+employed to make specific variable names more intuitive and consistent
+across the data sets, facilitating easier comparison and analysis.
+
+```{r}
+
+OF <- OF |>
+  mutate(treatment = fct_recode(Treatment, 
+                                "5.9% THC (low dose)" = "5.90%",
+                                "13.4% THC (high dose)" = "13.40%"),
+         Treatment = fct_relevel(Treatment, "Placebo", "5.9% THC (low dose)"),
+         Group = fct_recode(Group, 
+                            "Occasional user" = "Not experienced user",
+                            "Frequent user" = "Experienced user" )) |>  
+  janitor::clean_names() |>
+  rename(thcoh = x11_oh_thc,
+         thcv = thc_v)
+
+WB <- WB |> 
+  mutate(Treatment = fct_recode(Treatment, 
+                                "5.9% THC (low dose)" = "5.90%",
+                                "13.4% THC (high dose)" = "13.40%"),
+         Treatment = fct_relevel(Treatment, "Placebo", "5.9% THC (low dose)")) |> 
+  janitor::clean_names() |>
+  rename(thcoh = x11_oh_thc,
+         thccooh = thc_cooh,
+         thccooh_gluc = thc_cooh_gluc,
+         thcv = thc_v)
+
+BR <- BR |> 
+  mutate(Treatment = fct_recode(Treatment, 
+                                "5.9% THC (low dose)" = "5.90%",
+                                "13.4% THC (high dose)" = "13.40%"),
+         Treatment = fct_relevel(Treatment, "Placebo", "5.9% THC (low dose)"),
+         Group = fct_recode(Group, 
+                            "Occasional user" = "Not experienced user",
+                            "Frequent user" = "Experienced user" )) |> 
+  janitor::clean_names() |> 
+  rename(thc = thc_pg_pad)
+
+```
+
+### Data Display and Explanation
+
+Now that we are done pre-processing the data, we will display what each
+of the 3 data tables (blood, oral fluid, and breath) look like below:
+
+Blood data table:
+
+```{r}
+
+WB
+
+```
+
+Explanation of variables -
+
+Id: The Id of the participant Treatment:
+
+Treatment the participant got (low dose, high dose, or placebo)
+
+Group: Whether someone is an occasional or frequeny user Fluid_type: The
+type of fluid collected (WB = whole blood, BR = breath, OF = oral fluid)
+
+Timepoint: Indicator of which point in the timeline participant's
+collection occurred Cbn:A cannabis chemical compound
+
+Cbd: A cannabis chemical compound
+
+Thc: A cannabis chemical compound (the active ingredient that causes a
+"high") Tchoh: A cannabis metabolite
+
+Thccooh: A cannabis metabolite
+
+Thccooh_gluc: A cannabis metabolite
+
+Cbg: A cannabis chemical compound
+
+Thcv: A cannabis chemical compound
+
+Time_from_start: How long the measurement was taken after smoking in
+minutes. Negative values indicite before smoking.
+
+Oral Fluid data table:
+
+```{r}
+
+OF
+
+```
+
+Explanation of variables -
+
+Id: The Id of the participant Treatment: Treatment the participant got
+(low dose, high dose, or placebo)
+
+Group: Whether someone is an occasional or frequeny user
+
+Fluid_type: The type of fluid collected (WB = whole blood, BR = breath,
+OF = oral fluid)
+
+Timepoint: Indicator of which point in the timeline participant's
+collection occurred
+
+Cbn: A cannabis chemical compound
+
+Cbd: A cannabis chemical compound
+
+Thc: A cannabis chemical compound (the active ingredient that causes a
+"high")
+
+Tchoh: A cannabis metabolite
+
+Thccooh: A cannabis metabolite
+
+Cbg: A cannabis chemical compound
+
+Thcv: A cannabis chemical compound
+
+Thca_a: A cannabis chemical compound
+
+Time_from_start: How long the measurement was taken after smoking in
+minutes. Negative values indicite before smoking.
+
+Treatment_2: Treatment the participant got (low dose, high dose, or
+placebo)
+
+Breath data table:
+
+```{r}
+
+BR
+
+```
+
+Explanation of variables - Id: The Id of the participant Treatment:
+
+Treatment the participant got (low dose, high dose, or placebo)
+
+Group: Whether someone is an occasional or frequeny user Fluid:
+
+The type of fluid collected (WB = whole blood, BR = breath, OF = oral
+fluid)
+
+Timepoint: Indicator of which point in the timeline participant's
+collection occurred
+
+Thc: A cannabis chemical compound (the active ingredient that causes a
+"high")
+
+Time_from_start: How long the measurement was taken after smoking in
+minutes. Negative values indicite before smoking.
+
+## Analysis
+
+Here, we will conduct the data analysis to address our questions
+
+### Exploratory Data Analysis
+
+First, we will begin by conducting some exploratory data analysis in
+order to get a general sense of the characteristics of our data. This
+would also help to inform us on if certain analysis methods should not
+be used if there are some extreme characteristics that wouldn't be
+suitable for some methods. Below, we have created exploratory plots and
+provided an explanation for them under the plot.
+
+First, we looked at thccooh_gluc levels over time in frequent vs.
+occasional users:
+
+```{r}
+
+options(repr.plot.width=12, repr.plot.height=8)
+
+thccooh_gluc_data <- WB |>
+  filter(!is.na(thccooh_gluc)) |>
+  select(id, group, time_from_start, thccooh_gluc)
+
+
+ggplot(thccooh_gluc_data, aes(x = time_from_start, y = thccooh_gluc, color = group)) +
+  geom_line() +
+  labs(title = 'Thccooh_gluc Levels Over Time In Frequent vs. Occasional Users',
+       x = 'Time From Start (min)',
+       y = 'Thccooh_gluc Levels') +
+  theme_minimal()
+
+
+```
+
+**Result:** From the graph above, it can be seen that while both
+occasional and frequent users experience similar "spikes" and an overall
+trend in their levels of thccooh_gluc over time, the magnitude of the
+thccooh_gluc levels are overall much higher for frequent users than for
+occasional users.
+
+Then we conducted a similar exploration of thc against time from start
+because we know that thc is one of the most important compounds in
+predicting whether someone recently used weed or not. Here we are
+visualizing it in Breath against different types of treatment.
+
+```{r}
+ggplot(BR, aes(x = time_from_start, y = thc, color = treatment)) +
+  geom_line() +
+  theme_minimal() +
+  labs(title = 'THC Levels Over Time by Treatment in BR Fluid',
+       x = 'Time From Start (minutes)',
+       y = 'THC Level')
+```
+
+**Result:** As we can see from the plot above, there is a surge of thc
+level in breath right after taking the drug, especially for high doses.
+However, the thc level also decreased more reapidly for high does
+compared to the low does condition.
+
+Then we decided to compare the mean levels of the compounds thc,
+thccooh, thccooh_gluc, and thcoh between occasional and frequent users
+by treatment type to see if there are any significant differences in
+mean levels of the compounds in blood between frequent and infrequent
+users and to get a better idea if user frequency or treatment type is
+more influential on these levels.
+
+```{r}
+thccooh_gluc_treatment_data <- WB |>
+  filter(!is.na(thccooh_gluc) & !is.na(thc) & !is.na(thcoh) & !is.na(thccooh)) |>
+  select(id, group, treatment, thccooh_gluc, thc, thcoh, thccooh)
+
+thccooh_gluc_treatment_data_long <- thccooh_gluc_treatment_data |>
+  pivot_longer(cols = c(thccooh_gluc, thc, thcoh, thccooh), names_to = "compound", values_to = "value")
+
+ggplot(thccooh_gluc_treatment_data_long, aes(x = treatment, y = value, fill = group)) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge", color = "white") +
+  labs(title = 'Mean Compound Levels by Treatment Type for Frequent vs. Occasional Users',
+       x = 'Treatment Type',
+       y = 'Mean Compound Levels') +
+  scale_fill_manual(values = c("#19831C", "#A27FC9")) +
+  facet_wrap(~compound, scales = "free_y", ncol = 1) +  
+  theme_minimal()
+```
+
+**Result:** It can be seen from the plot above that regardless of
+compound and treatment type, frequent users always have higher mean
+levels of a compound than occasional users. Additionally, it can be seen
+that for both occasional and frequent users, across all compounds, they
+both follow a similar trend of having the lowest mean levels of a
+compound for the placebo, the highest for the low dose, and an
+in-between amount for the high dose.
+
+Next, we also compared the compound level within the participants' Oral
+Fluid at timepoint T2A, which is right after the participants takes the
+weed, at this time, each compound concentration should reach a max
+level.
+
+```{r}
+#Visualization of Cannabinoid Profiles in OF Fluid
+OF_specific_timepoint <- OF %>% 
+  filter(timepoint == "T2A") %>% 
+  select(cbn, cbd, thc, thcoh, cbg, thcv) %>% 
+  pivot_longer(cols = everything(), names_to = "compound", values_to = "level")
+
+# Bar plot of cannabinoid levels at a specific timepoint in the OF dataset
+ggplot(OF_specific_timepoint, aes(x = compound, y = level, fill = compound)) +
+  geom_bar(stat = "identity") +
+  scale_y_log10() +  #log scale y axis
+  theme_minimal() +
+  labs(title = 'Cannabinoid Levels in OF Fluid at Timepoint T2A',
+       x = 'Compound',
+       y = 'Level')
+```
+
+**Result:** From the plot above, we can see a super high concentration
+of thc followed by cbn and cbg, this can signify that these are the
+three compounds that reacted the most after a participant takes the
+drug.
+
+Lastly, we investigated the concentration of THC in oral fluid samples
+of individuals after the use of cigarettes with varying THC doses. We
+categorized the subjects into two groups: "Frequent users" and
+"Occasional users." Using boxplots faceted by treatment groups, we
+compared the THC concentrations across different timepoints.
+
+```{r}
+OF %>%
+  ggplot(aes(x = timepoint, y = thc, fill = group)) +
+  geom_boxplot() +
+  scale_y_log10() +  # log scale
+  facet_wrap(~treatment, scales = 'free_y') +
+  theme_minimal() +
+  labs(title = "THC Concentration Across Treatments",
+       x = "Timepoint",
+       y = "THC Concentration",
+       fill = "Group") +
+  theme(legend.position = "bottom")
+```
+
+**Result:** From the plot above, we can observe that THC concentrations
+vary notably between different treatments and over time. High dose THC
+treatment exhibits higher variability and generally higher THC
+concentrations, as expected, compared to the low dose and placebo
+groups. The frequent users show a tendency to have higher THC levels
+across most timepoints, particularly evident in the high dose treatment
+group. The timepoint progression suggests that THC concentration peaks
+at different times for different treatments, potentially indicating the
+absorption and metabolism rates of the substance by the body.
+
+### Primary Question Analysis
+
+Here, we will conduct our analysis to help answer our primary question -
+Which compound, in which matrix, and at what cutoff is the best
+biomarker of recent use?
+
+To answer this question, we can dissect this question into three sub
+questions:
+
+Below is also an explanation of why we chose the steps that we did for
+this analysis:
+
+1\. **Which matrix:** In order to figure out the most important matrix,
+we decided to use a random forest model because by leveraging a Random
+Forest model, we can scrutinize each dataset/matrix to assess predictive
+efficacy.
+
+2\. **Which compound:** In order to figure out which compound, we
+harnessed the model's integral feature importance metrics because it
+would give us good insight into the most predictive compound.
+
+3\. **At what cutoff:** Finally, we employ ROC curve analyses on the
+paramount compounds within the optimal matrix, establishing precise
+cutoff values for the identification of recent use.
+
+Following the **first step**, we can build and train the random forest
+model on all three datasets:
+
+One thing to note here is that we defined recent use to be participants
+whose timepoint is not T1, and did not take a Placebo.
+
+Random Forest - oral fluid:
+
+```{r}
+
+library(randomForest)
+library(caret)
+
+OF <- OF %>%
+  mutate(recent_user = ifelse(timepoint != "T1" & treatment != "Placebo", 1, 0))
+
+OF <- OF %>% 
+  select(-id, -treatment, -treatment_2, -timepoint, -time_from_start)  
+
+OF$recent_user <- as.factor(OF$recent_user)
+
+OF <- na.omit(OF)
+
+set.seed(123) 
+
+splitIndex <- createDataPartition(OF$recent_user, p = 0.8, list = FALSE, times = 1)
+
+train_data <- OF[splitIndex, ]
+test_data <- OF[-splitIndex, ]
+
+rf_model <- randomForest(recent_user ~ ., data = train_data, importance = TRUE, na.action = na.omit)
+
+predictions <- predict(rf_model, test_data)
+
+accuracy <- sum(predictions == test_data$recent_user) / nrow(test_data)
+print(accuracy)
+
+importance_data <- data.frame(Variable = row.names(importance(rf_model)),
+                              MeanDecreaseAccuracy = importance(rf_model)[, "MeanDecreaseAccuracy"])
+importance_data <- importance_data[order(-importance_data$MeanDecreaseAccuracy), ]
+
+print(importance_data)
+
+
+```
+
+As seen from our results above, our Random Forest model actually
+predicted pretty well with an accuracy of 91.8%. Hence, from this we can
+see that the most important compounds in order of most significant to
+least significant are thc, cbn, cbg, cbd, thcv, thca_a, and thcoh.
+
+Random Forest - whole blood:
+
+```{r}
+WB <- WB %>%
+  mutate(recent_user = ifelse(timepoint != "T1" & treatment != "Placebo", 1, 0))
+
+WB <- WB %>% 
+  select(-id, -treatment, -timepoint, -time_from_start)  
+
+WB$recent_user <- as.factor(WB$recent_user)
+
+WB <- na.omit(WB)
+
+set.seed(123) 
+
+splitIndex <- createDataPartition(WB$recent_user, p = 0.8, list = FALSE, times = 1)
+
+train_data <- WB[splitIndex, ]
+test_data <- WB[-splitIndex, ]
+
+rf_model <- randomForest(recent_user ~ ., data = train_data, importance = TRUE, na.action = na.omit)
+
+predictions <- predict(rf_model, test_data)
+
+accuracy <- sum(predictions == test_data$recent_user) / nrow(test_data)
+print(accuracy)
+
+importance_data <- data.frame(Variable = row.names(importance(rf_model)),
+                              MeanDecreaseAccuracy = importance(rf_model)[, "MeanDecreaseAccuracy"])
+importance_data <- importance_data[order(-importance_data$MeanDecreaseAccuracy), ]
+
+print(importance_data)
+
+```
+
+Random Forest - breath:
+
+```{r}
+BR <- BR %>%
+  mutate(recent_user = ifelse(timepoint != "T1" & treatment != "Placebo", 1, 0))
+
+BR <- BR %>% 
+  select(-id, -treatment, -timepoint, -time_from_start)  
+
+BR$recent_user <- as.factor(BR$recent_user)
+
+BR <- na.omit(BR)
+
+set.seed(123) 
+
+splitIndex <- createDataPartition(BR$recent_user, p = 0.8, list = FALSE, times = 1)
+
+train_data <- BR[splitIndex, ]
+test_data <- BR[-splitIndex, ]
+
+rf_model <- randomForest(recent_user ~ ., data = train_data, importance = TRUE, na.action = na.omit)
+
+predictions <- predict(rf_model, test_data)
+
+accuracy <- sum(predictions == test_data$recent_user) / nrow(test_data)
+print(accuracy)
+
+importance_data <- data.frame(Variable = row.names(importance(rf_model)),
+                              MeanDecreaseAccuracy = importance(rf_model)[, "MeanDecreaseAccuracy"])
+importance_data <- importance_data[order(-importance_data$MeanDecreaseAccuracy), ]
+
+print(importance_data)
+
+```
+
+After running the same model for the whole blood and breath datasets, we
+can see that the best matrix to use is Oral Fluid because we have a
+91.8% accuracy in predicting compared to 77.9% with Blood and 59.3% with
+breath.
+
+Also, the top 5 most important compounds in order of most important to
+least important are thc, cbn, cbg, cbd, thcv. Below from our ROC
+analysis section, we will determine the single most important compound.
+
+Now we will use an ROC analysis to determine the single most important
+compound and the optimal cutoff for each of the compounds.
+
+```{r}
+library(pROC)
+OF$thc <- as.numeric(as.character(OF$thc))
+roc_obj <- roc(OF$recent_user, OF$thc)
+optimal_cutoff <- coords(roc_obj, "best", ret="threshold")
+
+print(optimal_cutoff)
+
+plot(roc_obj, main="THC ROC Curve")
+abline(v = optimal_cutoff, col = "red")
+
+```
+
+```{r}
+
+OF$cbn <- as.numeric(as.character(OF$cbn))
+roc_obj <- roc(OF$recent_user, OF$cbn)
+optimal_cutoff <- coords(roc_obj, "best", ret="threshold")
+
+print(optimal_cutoff)
+
+plot(roc_obj, main="CBN ROC Curve")
+abline(v = optimal_cutoff, col = "red")
+
+```
+
+```{r}
+OF$cbg <- as.numeric(as.character(OF$cbg))
+roc_obj <- roc(OF$recent_user, OF$cbg)
+optimal_cutoff <- coords(roc_obj, "best", ret="threshold")
+
+print(optimal_cutoff)
+
+plot(roc_obj, main="CBG ROC Curve")
+abline(v = optimal_cutoff, col = "red")
+```
+
+```{r}
+OF$cbd <- as.numeric(as.character(OF$cbd))
+roc_obj <- roc(OF$recent_user, OF$cbd)
+optimal_cutoff <- coords(roc_obj, "best", ret="threshold")
+
+print(optimal_cutoff)
+
+plot(roc_obj, main="CBD ROC Curve")
+abline(v = optimal_cutoff, col = "red")
+```
+
+```{r}
+OF$thcv <- as.numeric(as.character(OF$thcv))
+roc_obj <- roc(OF$recent_user, OF$thcv)
+optimal_cutoff <- coords(roc_obj, "best", ret="threshold")
+
+print(optimal_cutoff)
+
+plot(roc_obj, main="THCV ROC Curve")
+abline(v = optimal_cutoff, col = "red")
+```
+
+The results from the ROC tests above shows that the optimal cutoff for
+the five different compounds are: thc (1.35), cbn (0.45), cbg (0.5), cbd
+(0.2), and thcv (0.2).
+
+The ROC analysis yields a compelling insight, pinpointing **THC as the
+most reliable biomarker for recent use within the Oral Fluid matrix,
+with an optimal threshold of 1.35**. This conclusion is drawn from the
+ROC curve's pronounced performance, characterized by its steep ascent
+and plateau, reflecting an exceptional balance between specificity and
+sensitivity. It's this distinct curve profile that underscores THC's
+capacity to differentiate recent use with high precision, thus affirming
+its status as the preeminent biomarker in this context.
+
+### Secondary Question Analysis
+
+Here, we will conduct our analysis to help answer our secondary
+question - How does the frequency of cannabis use correlate with the use
+of other hard drugs for people of ages 15-64?
+
+#### The Data - Secondary Question
+
+In order to address this question, we decided to find another data set
+that had information on people's cannabis and other drug use (Kaggle,
+2018).
+
+The data can be seen here:
+
+```{r}
+
+drug_use_data = read_csv('data/secondary_q_data.csv')
+
+drug_use_data
+
+```
+
+Explanation of variables -
+
+age: age group of people in the dataset
+
+n: number of people in that age group alcohol-use:
+
+alcohol-frequency: Percentage of those in an age group who used alcohol
+in the past 12 months
+
+alcohol-use: Median number of times a user in an age group used alcohol
+in the past 12 months
+
+marijuana-use: Percentage of those in an age group who used marijuana in
+the past 12 months
+
+marijuana-frequency: Median number of times a user in an age group used
+marijuana in the past 12 months
+
+cocaine-use: Percentage of those in an age group who used cocaine in the
+past 12 months
+
+cocaine-frequency: Median number of times a user in an age group used
+cocaine in the past 12 months
+
+crack-use Percentage of those in an age group who used crack in the past
+12 months
+
+crack-frequency: Median number of times a user in an age group used
+crack in the past 12 months
+
+heroin-use: Percentage of those in an age group who used heroin in the
+past 12 months
+
+heroin-frequency: Median number of times a user in an age group used
+heroin in the past 12 months
+
+hallucinogen-use: Percentage of those in an age group who used
+hallucinogens in the past 12 months
+
+hallucinogen-frequency: Median number of times a user in an age group
+used hallucinogens in the past 12 months
+
+inhalant-use: Percentage of those in an age group who used inhalants in
+the past 12 months
+
+inhalant-frequency: Median number of times a user in an age group used
+inhalants in the past 12 months
+
+pain-releiver-use: Percentage of those in an age group who used pain
+relievers in the past 12 months
+
+pain-releiver-frequency: Median number of times a user in an age group
+used pain relievers in the past 12 months
+
+oxycontin-use: Percentage of those in an age group who used oxycontin in
+the past 12 months
+
+oxycontin-frequency: Median number of times a user in an age group used
+oxycontin in the past 12 months
+
+tranquilizer-use: Percentage of those in an age group who used
+tranquilizer in the past 12 months
+
+tranquilizer-frequency: Median number of times a user in an age group
+used tranquilizer in the past 12 months
+
+stimulant-use: Percentage of those in an age group who used stimulants
+in the past 12 months
+
+stimulant-frequency: Median number of times a user in an age group used
+stimulants in the past 12 months
+
+meth-use: Percentage of those in an age group who used meth in the past
+12 months
+
+meth-frequency: Median number of times a user in an age group used meth
+in the past 12 months
+
+sedative-use: Percentage of those in an age group who used sedatives in
+the past 12 months
+
+sedative-frequency: Median number of times a user in an age group used
+sedatives in the past 12 months
+
+For the purposes of our study, the variables we are choosing to focus on
+in addition to age and marijuana_frequency are cocaine_frequency and
+meth_frequency because according to the US Deapartment of
+Transportation, "Cocaine and methamphetamine can make drivers more
+aggressive and reckless" (US Department of Transportation, n.d.).
+Additionally, we are choosing to focus only on ages 15-64 since those
+are typical driving ages.
+
+##### Data Preprocessing - Secondary Question
+
+Here we will preprocess the data to make it easier to work with
+
+First, we dropped the columns we didn't need
+
+Then, for any missing values, we replaced them with 0 because there were
+two missing values so we thought it would be a fair assumption to make
+that wouldn't impact our analysis too much.
+
+Our data after this preprocessing is displayed below
+
+```{r}
+
+# Dropping columns we don't need
+needed_columns <- c("age", "n", "marijuana-frequency", "cocaine-frequency", "meth-frequency")
+drug_use_data <- drug_use_data[, needed_columns]
+
+# Replacing missing values with 0
+drug_use_data[["cocaine-frequency"]] <- as.numeric(drug_use_data[["cocaine-frequency"]])
+drug_use_data[["meth-frequency"]] <- as.numeric(drug_use_data[["meth-frequency"]])
+
+drug_use_data[drug_use_data == "-"] <- 0
+
+drug_use_data[is.na(drug_use_data)] <- 0
+
+drug_use_data
+```
+
+##### Exploratory Data Analysis - Secondary Question
+
+Here, we are looking at the distribution of age groups in our data so
+that we can have an idea of how to factor this in when interpreting our
+results.
+
+In order to do so, we decided to create a histogram of the age groups.
+
+```{r}
+
+drug_use_data <- drug_use_data %>%
+  mutate(age = as.character(age)) %>%
+  mutate(age = factor(age, levels = sort(unique(age))))
+
+ggplot(drug_use_data, aes(x = age, y = n)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(x = "Age", y = "Count", title = "Histogram of Age vs. Count") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+
+```
+
+From our histogram, we can see that the age groups are fairly uniformly
+distributed except for age groups 22-23, 24-25, and 34-49.
+
+#### Analysis - Secondary Question
+
+Here, we will conduct the analysis to answer the question -
+
+How does the frequency of cannabis use correlate with the use of other
+hard drugs for people of ages 15-64?
+
+In order to answer this question, we will create a linear regression
+model for people of ages 15-64 comparing the marijuana_frequency and the
+cocaine_frequency and a linear regression model for comparing the
+marijuana_frequency and the meth_frequency as shown below:
+
+Marijuana_frequency vs. Cocaine_frequency:
+
+```{r}
+
+drug_use_data_driving_ages <- drug_use_data %>%
+  filter(!age %in% c(12, 13, 14,"65+")) 
+
+drug_use_data_driving_ages <- drug_use_data_driving_ages %>%
+  mutate(
+    `marijuana-frequency` = as.numeric(as.character(`marijuana-frequency`)),
+    `cocaine-frequency` = as.numeric(as.character(`cocaine-frequency`))
+  )
+
+# Fitting the linear regression for marijuana frequency as a function of cocaine frequency
+model <- lm(`marijuana-frequency` ~ `cocaine-frequency`, data = drug_use_data_driving_ages)
+
+# Viewing the summary of the model to see the results
+summary(model)
+
+```
+
+From the results, we can see that the linear regression analysis
+indicates that there is not a statistically significant linear
+relationship between marijuana frequency and cocaine frequency. There is
+a a light positive relationship between marijuana frequency and cocaine
+frequency as indicated by the slope value 0.1496, but it is not
+significant because the p-value associated with the cocaine-frequency
+coefficient (p = 0.746) is much higher than the conventional threshold
+of 0.05. Consequently, we fail to reject the null hypothesis that there
+is no linear relationship between these two variables.
+
+The Multiple R-squared value of 0.009897 shows that only about 0.99% of
+the variability in marijuana frequency can be explained by cocaine
+frequency which is not much.
+
+In summary, the linear regression analysis does not provide evidence of
+a significant linear relationship between marijuana frequency and
+cocaine frequency based on the given sample. Hence, there may not be too
+much combined use of marijuana and cocaine.
+
+Marijuana_frequency vs. Meth_frequency:
+
+```{r}
+
+drug_use_data_driving_ages <- drug_use_data %>%
+  filter(!age %in% c(12, 13, 14,"65+")) 
+
+drug_use_data_driving_ages <- drug_use_data_driving_ages %>%
+  mutate(
+    `marijuana-frequency` = as.numeric(as.character(`marijuana-frequency`)),
+    `meth-frequency` = as.numeric(as.character(`meth-frequency`))
+  )
+
+# Fitting the linear regression for marijuana frequency as a function of meth frequency
+model <- lm(`marijuana-frequency` ~ `meth-frequency`, data = drug_use_data_driving_ages)
+
+# Viewing the summary of the model to see the results
+summary(model)
+
+```
+
+From the results, we can see that the linear regression analysis
+indicates that there is not a statistically significant linear
+relationship between marijuana frequency and meth frequency. There is a
+a light positive relationship between marijuana frequency and meth
+frequency as indicated by the slope value 0.06934, but it is not
+significant because the p-value associated with the cocaine-frequency
+coefficient (p = 0.565) is much higher than the conventional threshold
+of 0.05. Consequently, we fail to reject the null hypothesis that there
+is no linear relationship between these two variables.
+
+The Multiple R-squared value of 0.03097 shows that only about 3% of the
+variability in marijuana frequency can be explained by meth frequency
+which is not much.
+
+In summary, the linear regression analysis does not provide evidence of
+a significant linear relationship between marijuana frequency and meth
+frequency based on the given sample. Hence, there may not be too much
+combined use of marijuana and cocaine.
+
+## Results and Discussion
+
+Overall, as seen from our graphs, models, and the interpretations of
+them above, we were able to address our two questions fairly accurately.
+
+For our first question - Which compound, in which matrix, and at what
+cutoff is the best biomarker of recent use, we analyzed the question
+piece-by-piece - "which compound", "which matrix", and "what cutoff". In
+order to determine "which compound", we used a random forest model for
+our blood, oral fluid, and breath datasets and found that the best
+matrix was oral fluid because we found a 91.8% accuracy with it compared
+to 77.9% with Blood and 59.3% with breath. In order to determine "what
+compound", we also looked at the results of our random forest models and
+found that the top 5 most important compounds in order of most important
+to least important were thc, cbn, cbg, cbd, thcv. Lastly, for "which
+cutoff", we created ROC curves for each compound and found that the
+optimal cutoff for the five different compounds were thc (1.35), cbn
+(0.45), cbg (0.5), cbd (0.2), and thcv (0.2) so from this we determined
+1.35 as the optimal cutoff. Combining these results together we
+determined that using THC with an oral fluid test with a cutoff level of
+1.35 would be the best biomarker for recent use
+
+For our second question - How does the frequency of cannabis use
+correlate with the use of other hard drugs for people of ages 15-64, we
+created 2 linear regression models comparing marijuana_frequency vs.
+cocaine_frequnecy and marijuana_frequency vs. meth_frequency to
+determine if there is a high correlation between using marijuana and
+those two other drugs. From our results and looking at the slope values,
+p-values, and R\^2 values, we found that for both cocaine and meth,
+there was no significant correlation between the two indicating that it
+is not likely that people who use marijuana are also likely to use
+cocaine and meth.
+
+### Conclusion
+
+In conclusion, our study provides new insights for cannabis-related
+driving laws. Our main motivation of this study was to ensure that
+people stay safe on the road while also not wrongly incriminating
+individuals. From prior research, we found that the most effective way
+to determine if someone is actually impaired on the road is by
+determining if they used cannabis recently. Thus, we conducted analysis
+in order to determine what chemical compound, at what cutoff, using what
+test would help officers determine if someone is actually impaired or
+not and we found that if an individual has THC levels above 1.35 using
+an oral fluid test, it is likely that they used cannabis recently and is
+thus impaired. Furthermore, we decided to extend our investigation by
+looking at if there is a correlation between marijuana use and other
+hard-drug use (specifically cocaine and meth) for people within a
+driving age range (15-64) since by understanding the co-occurrence of
+cannabis use with other hard drugs, law enforcement can better
+prioritize testing procedures, ensuring a more focused approach in
+identifying potential substance-related impairments. For this question,
+we concluded that it is not likely that people who use marijuana are
+also likely to use cocaine and meth. However, we believe that
+investigating this question again with more data and with further
+analysis would help to solidy this conclusion. Overall, this study can
+help inform future driving laws and help improve drug testing methods
+especially with even further analysis in the future and can help keep
+people safe on the road while minimizing discrimination against drug
+users.
+
+### Sources
+
+Arkell, T., Spindle, T., Kevin, R., Vandrey, R., & McGregor, I. (2020).
+The failings of per se limits to detect cannabis-induced driving ...
+National Library of Medicine.
+<https://www.tandfonline.com/doi/full/10.1080/15389588.2020.1851685>
+
+Bergamaschi, M., Karschner, E., Goodwin, R., Scheidweiler, K., Hirvonen,
+J., Queiroz, R., & Huestis, M. (2013). Impact of Prolonged Cannabinoid
+Excretion in Chronic Daily Cannabis Smokers' Blood on Per Se Drugged
+Driving Laws . Academic.oup.com.
+<https://academic.oup.com/clinchem/article/59/3/519/5622035?login=false>
+
+Department of Cannabis Control - State of California. (2023).
+California's cannabis laws. Department of Cannabis Control.
+<https://cannabis.ca.gov/cannabis-laws/laws-and-regulations/#>:\~:text=California%20became%20the%20first%20state,and%20adult%20(recreational)%20use.
+
+Drug-impaired driving. NHTSA. (n.d.).
+<https://www.nhtsa.gov/risky-driving/drug-impaired-driving#>:\~:text=Alcohol%2C%20marijuana%2C%20and%20other%20drugs,drivers%20more%20aggressive%20and%20reckless.
+
+Ellis, S. (2023). Cogs 137 - 11-CS01-data - GitHub Pages. Cogs 137
+Github.
+<https://cogs137.github.io/website/content/lectures/11-cs01-data-slides.html>
+
+Hubbard, J., Hoffman, M., Ellis, S., Sobolesky, P., Smith, B.,
+Suhandynata, R., Sones, E., Sanford, S., Umlauf, A., Huestis, M.,
+Grelloti, D., Grant, I., Marcotte, T., & Fitzgerald, R. (2021).
+Biomarkers of Recent Cannabis Use in Blood, Oral Fluid and Breath.
+Academic.oup.com.
+<https://academic.oup.com/jat/article/45/8/820/6311388?login=false#303593274>
+
+Kaggle. (2018). drug-use-by-age. GitHub.
+<https://github.com/fivethirtyeight/data/blob/master/drug-use-by-age/drug-use-by-age.csv>
+
+Report State Medical Cannabis Laws. National Conference of State
+Legislatures. (2023).
+<https://www.ncsl.org/health/state-medical-cannabis-laws>
+
+Section 9: Alcohol and drugs. California DMV. (2023, February 1).
+<https://www.dmv.ca.gov/portal/handbook/california-driver-handbook/alcohol-and-drugs/#>:\~:text=Blood%20Alcohol%20Concentration%20(BAC)%20Limits&text=It%20is%20illegal%20for%20you,are%20under%2021%20years%20old.
+
+U.S. Department of Health and Human Services. (2022, August 22).
+Marijuana and hallucinogen use among young adults reached all-time high
+in 2021. National Institutes of Health.
+<https://www.nih.gov/news-events/news-releases/marijuana-hallucinogen-use-among-young-adults-reached-all-time-high-2021>
