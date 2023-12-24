@@ -1,0 +1,684 @@
+---
+title: "Final Project - Predicting Annual Air Pollution"
+author: "Xuan Jiang, Yutong Guo, Tengyue Wang"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+## Introduction
+
+This project aims to harness the power of data analytics, utilizing R,
+to forecast annual average air pollution concentrations across the
+United States at the granularity of zip code regions. Air pollution
+remains a critical environmental challenge impacting public health,
+ecosystem stability, and global climate change. Its complex nature,
+influenced by a myriad of factors ranging from urbanization to chemical
+atmospheric interactions, necessitates advanced predictive models for
+effective management and policy planning. Air pollution, comprising
+various pollutants like fine particles (PM2.5), ozone (O3), nitrogen
+oxides (NOx), and black carbon, has been associated with a range of
+adverse health outcomes, including asthma, inflammation in Type 1
+diabetes, lung diseases, low birth weight, and viral Infection.[1]
+
+Traditional epidemiological approaches to assessing air pollution levels
+have relied on a network of stationary monitors, which are often
+insufficient in number and unevenly distributed, particularly in rural
+or underdeveloped areas. Moreover, these monitors are not strategically
+placed near known pollution sources, leading to potential
+underestimations of exposure levels, which is known as sparse
+monitoring. These limitations hinder the ability to accurately assess
+and understand the full impact of air pollution on public health.2
+However, machine learning methods offer a promising solution for
+predicting air pollution levels. These advanced computational techniques
+can analyze large datasets, identifying complex patterns that are not
+evident through traditional analysis. By leveraging various types of
+data sources, such as satellite imagery, traffic patterns, industrial
+activity data, and meteorological information, machine learning
+algorithms can generate accurate predictions of air pollution levels in
+specific areas, even in the absence of direct monitoring data, which is
+particularly valuable in filling the gaps left by sparse monitoring
+networks.[2]
+
+### Load packages
+
+```{r load-packages, message=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(maps)
+library(lmtest)
+library(randomForest)
+#install.packages("maps")
+#install.packages("OCSdata")
+#install.packages("here")
+#install.packages("skimr")
+```
+
+## Research Question
+
+1.  Can we predict US annual average air pollution concentrations at the
+    granularity of zip code regional levels using predictors such as
+    data about population density, urbanization, and road density, as
+    well as, satellite pollution data and chemical modeling data?
+
+2.  How do varying levels of air pollutant concentrations across
+    different states correlate with the mortality rates from respiratory
+    conditions within those states？
+
+## The Data
+
+The dataset used in this study is an integration of data from "US
+Environmental Protection Agency (EPA), the National Aeronautics and
+Space Administration (NASA), the US Census, and the National Center for
+Health Statistics (NCHS)," which was initially collected by a researcher
+group at the Johns Hopkins School of Public Health.[3] This dataset,
+originating from 876 air quality monitors, provides a comprehensive view
+of PM2.5 (particulate matter with a diameter of less than 2.5
+micrometers) concentrations across various locations. It consists of 50
+columns, encompassing a wide range of environmental, geographical, and
+socio-demographic variables.
+
+The dataset we used for extended data analysis is "Weekly Counts of
+Deaths by State and Select Causes, 2014-2019", which was compiled by the
+National Center for Health Statistics (NCHS) and published on April 1st,
+2022. It records the number of deaths, categorized by specific causes,
+on a weekly basis. We focus on the column that contains the death counts
+of respiratory diseases in this study.[4]
+
+### Data Import
+
+```{r}
+# Load the dataset 
+# OCSdata::raw_data("ocs-bp-air-pollution", outpath = getwd())
+df <- readr::read_csv(here::here("OCS_data", "data","raw", "pm25_data.csv"))
+# View the dataset 
+df
+```
+
+### Data Wrangling
+
+```{r}
+# Get an overall sense of the dataset
+skimr::skim(df)
+# Select the columns that we needed and rename the dataset to "pm"
+pm <- subset(df, select = c(value, state, county, lat, lon, county_pop, log_prisec_length_1000,	popdens_county, popdens_zcta, pov, urc2013, aod, CMAQ ))
+# Rename the column name to aid understanding 
+pm <- pm |> rename("log_RoadLength_1kmRadius" = "log_prisec_length_1000",
+                   "optical_depth" = "aod")
+# View the wrangled dataset "pm"
+view(pm)
+```
+
+### Exploratory Data Analysis
+
+In approaching this question, we first visualize the distribution of
+PM2.5 values across states to gain a broad overview of air quality
+throughout the United States. This approach can highlight regional
+variations and potential hotspots of pollution. By mapping PM2.5 levels
+on a state-by-state basis, we can swiftly identify areas with higher
+pollution levels. This provides valuable context before we delve into a
+more granular analysis at the zip code level.
+
+**Figure1:** Spatial Distribution of PM 2.5 Values
+
+```{r}
+ggplot(pm, aes(x = lon, y = lat, color = value)) +
+  borders("state", colour = "black", fill = "white") + 
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  labs(title = "Spatial Distribution of PM 2.5 Values",
+       x = "Longitude", y = "Latitude", color = "PM 2.5 Value") +
+  theme_minimal()
+```
+
+**Result:** Based on the longitude and latitude of the distribution of
+the united states,We can see the California is extremely polluted, there
+are yellow dots on both North and South ends of California. Cities in
+the middle is a lot less polluted, probably because it is more rural
+compared to the coasts.
+
+**Figure2:** Spatial Distribution of CMAQ Values
+
+```{r}
+ggplot(pm, aes(x = lon, y = lat, color = CMAQ)) +
+  borders("state", colour = "black", fill = "white") + 
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_c() +
+  labs(title = "Spatial Distribution of CMAQ Values",
+       x = "Longitude", y = "Latitude", color = "CMAQ Values") +
+  theme_minimal()
+```
+
+**Result:** The results shown in Figure 2 are almost identical to those
+in Figure 1, indicating that the air pollution data generated by the
+'Community Multiscale Air Quality' (CMAQ) computational model accurately
+represents PM2.5 pollution. This similarity suggests a high level of
+accuracy and reliability in the model's ability to simulate air
+pollution scenarios, making the CMAQ value a potentially strong
+predictor.
+
+**Figure3:** The box-plot of PM 2.5 Values of the state
+
+```{r}
+ggplot(pm, aes(x = state, y = value)) +
+  geom_boxplot() +
+  labs(title = "PM2.5 Values by State",
+       x = "State",
+       y = "PM2.5 Value") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+Then we created a boxplot to compare the pm 2.5 value of each state.
+This way we have a better idea of the distribution of the data, which
+would serve well in the later extended analysis while comparing state
+air pollution level by death.
+
+**Result:** The boxplot provides a comparative view of PM2.5 values
+across several states. States like California, Pennsylvania, and New
+York show a wider range of PM2.5 concentrations, as indicated by their
+longer box and whisker spans, which points to a higher variability in
+air pollution within these states. Outliers are particularly noticeable
+in states such as Utah, suggesting sporadic instances of very high PM2.5
+levels. On the other hand, states like Vermont and New Hampshire display
+shorter boxes and whiskers, reflecting a more consistent PM2.5 level
+with less variability. The median PM2.5 levels, marked by the horizontal
+line within the boxes, vary from state to state, with some states
+displaying medians on the higher end of the scale, potentially signaling
+an overall higher level of air pollution.
+
+**Figure4:** Relationship between PM 2.5 values and poverty 
+```{r}
+#PM 2. 5 levels versus poverty 
+ggplot(df, aes(x = pov, y = value)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", color = "blue") +
+  labs(title = "Relationship between PM 2.5 Levels and Poverty Rate",
+       x = "Poverty Rate (%)", y = "PM 2.5 Value") +
+  theme_minimal()
+#PM 2.5 levels versus popdens_zcta
+ggplot(df, aes(x = popdens_zcta, y = value)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", color = "blue") +
+  labs(title = "Relationship between PM 2.5 Levels and popdens_zcta",
+       x = "Popdens_zcta", y = "PM 2.5 Value") +
+  theme_minimal()
+#PM 2.5 levels versus Aerosol Optical Depth measurement from a NASA satellite
+ggplot(df, aes(x = aod, y = value)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", color = "blue") +
+  labs(title = "Relationship between PM 2.5 Levels and Aod",
+       x = "Aerosol Optical Depth measurement from a NASA satellite", y = "PM 2.5 Value") +
+  theme_minimal()
+```
+**Result:** 
+**Poverty Rate**:
+The scatter plot indicates a positive correlation between PM 2.5 levels, a measure of air pollution, and poverty rates. As poverty rates increase, there appears to be a corresponding rise in PM 2.5 levels, suggesting that areas with higher poverty may also suffer from higher air pollution. 
+**Population density (number of people per kilometer squared area of zcta)**:
+The provided scatter plot depicts the relationship between PM 2.5 levels and population density (popdens_zcta). The plot shows a general upward trend, as indicated by the blue trend line, suggesting that higher population densities tend to correspond with higher PM 2.5 levels. This could imply that more densely populated areas experience greater air pollution. The shaded area around the trend line may represent a confidence interval, indicating where the true relationship is likely to lie with a certain level of certainty. 
+**Aerosol Optical Depth measurement from a NASA satellite**:
+The scatter plot illustrates a positive relationship between PM 2.5 leveles and aerosol optical depth (AOD), the blue line, likely representing a linear regression fit, shows that as AOD increases, PM 2.5 levels tend to increase as well. This suggests that higher concentrations of aerosols in the atmosphere are associated with higher concentrations of PM 2.5. The shaded area around the line may indicate the confidence interval, providing a range of values where the true line of best fit is expected to fall. The data points are somewhat tightly clustered along the trend line, especially at lower AOD values, which indicates a stronger relationship between these two variables in that range. 
+
+## Data Analysis
+
+```{r}
+#correlation matrix
+cor_matrix <- cor(pm |>
+                    select(popdens_zcta, urc2013, log_RoadLength_1kmRadius, optical_depth, CMAQ, value))
+cor_matrix
+```
+
+We can first run a correlation matrix between the 5 main factors and the
+pm 2.5 value to see wheather there is a significant correlation between
+each factor and the pm 2.5 value.
+
+**Result**: Looking at the last column of this table: The slight
+positive correlation between population density and PM2.5 values
+(0.1330540) suggests that areas with higher numbers of people could have
+increased emissions from sources like vehicles and industrial
+activities, contributing to higher PM2.5 levels. Despite being a weak
+correlation, population density still carries potential predictive value
+as a proxy for human-related pollution sources.The modest negative
+correlation between urbanization level and PM2.5 values (-0.2508474)
+indicates an inverse relationship where more urbanized areas could
+exhibit lower PM2.5 levels. This could be attributed to better
+infrastructure for pollution control and regulation enforcement in
+highly urbanized areas. Although the result is counter-intuitive, the
+variable urbanization level could still serve as a valuable predictor in
+the model. The moderate positive correlation between log-transformed
+road length within a 1 km radius and PM2.5 values (0.2053322) points
+towards road length being a good indicator of vehicular emissions, which
+are a major source of air pollution. The correlation between the
+Satellite Data (optical_depth) and the PM2.5 values is 0.3498.This
+represents a moderate positive correlation, suggesting a more
+substantial relationship where higher optical depth readings are
+associated with higher PM2.5 values.The correlation betwee the Chemical
+Modeling Data (CMAQ) and the PM2.5 values is 0.4662. This is the
+strongest correlation observed among the predictors. It indicates a
+moderate to strong positive correlation, suggesting that higher CMAQ
+values are significantly associated with higher PM2.5 values.
+
+```{r}
+#linear regression 
+model_popdens <- lm(value ~ popdens_zcta, data = pm)
+model_urbanization <- lm(value ~urc2013, data = pm)
+model_roaddens <- lm(value ~ log_RoadLength_1kmRadius, data = pm)
+model_optdep <- lm(value ~ optical_depth, data = pm)
+model_CMAQ <- lm(value ~ CMAQ, data = pm)
+
+summary(model_CMAQ)
+
+#Visualizations 
+# Model with population density
+ggplot(pm, aes(x = popdens_zcta, y = value)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Model of Value vs Population Density",
+       x = "Population Density (ZCTA)",
+       y = "Value") +
+  theme_minimal()
+
+# Model with urbanization
+ggplot(pm, aes(x = urc2013, y = value)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Model of Value vs Urbanization",
+       x = "Urbanization (URC 2013)",
+       y = "Value") +
+  theme_minimal()
+
+# Model with road density
+ggplot(pm, aes(x = log_RoadLength_1kmRadius, y = value)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Model of Value vs Log Road Length within 1km Radius",
+       x = "Log Road Length within 1km Radius",
+       y = "Value") +
+  theme_minimal()
+
+# Model with optical depth
+ggplot(pm, aes(x = optical_depth, y = value)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Model of Value vs Optical Depth",
+       x = "Optical Depth",
+       y = "Value") +
+  theme_minimal()
+
+# Model with CMAQ
+ggplot(pm, aes(x = CMAQ, y = value)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Model of Value vs CMAQ",
+       x = "CMAQ Value",
+       y = "Value") +
+  theme_minimal()
+
+```
+
+Here we plotted the linear regression graph of each of the 5 factors
+against pm 2.5 value.
+
+**Result**: We can see that there is a slight positive relationship
+between pm 2.5 value and population density, road density (represented
+by log raod lenth within 1 km radius), and optic depth. There is a
+pretty significant positive relationship between pm 2.5 value and CMAQ
+value, and a slight negative realtionship between pm 2.5 value and
+urbanization, which is a suprising result.
+
+```{r}
+# Model Evaluation
+summary(model_popdens)$coefficients
+summary(model_urbanization)$coefficients
+summary(model_roaddens)$coefficients
+summary(model_optdep)$coefficients
+summary(model_CMAQ)$coefficients
+
+# Extract model summaries using glance
+summary_popdens <- glance(model_popdens)
+summary_urbanization <- glance(model_urbanization)
+summary_roaddens <- glance(model_roaddens)
+summary_optdep<- glance(model_optdep)
+summary_CMAQ <- glance(model_CMAQ)
+
+# Add a column to each summary to indicate the model
+summary_popdens$model <- "Population Density"
+summary_urbanization$model <- "Urbanization Level"
+summary_roaddens$model <- "Road Density"
+summary_optdep$model <- "Satellite Data"
+summary_CMAQ$model <- "Chemical Modeling Data"
+
+factors <- c("PopDens", "Urbanization", "RoadDens", "OptDep", "CMAQ")
+
+# Bind the rows and add the 'factor' column
+combined_summary <- bind_rows(
+  summary_popdens %>% mutate(factor = factors[1]),
+  summary_urbanization %>% mutate(factor = factors[2]),
+  summary_roaddens %>% mutate(factor = factors[3]),
+  summary_optdep %>% mutate(factor = factors[4]),
+  summary_CMAQ %>% mutate(factor = factors[5])
+)
+
+combined_summary <- combined_summary %>% 
+  select(factor, everything())
+
+combined_summary
+```
+
+To better interpret the result from our linear regression model above,
+we printed the result table of our linear regression models. The
+Pr(\>\|t\|) column here can tell us the probability that the result is
+significant.
+
+**Result:**
+
+Coefficient for Population Density: 1.246e-04 This model suggests a
+slight positive relationship between population density and the response
+variable. However, the relatively small coefficient indicates that
+population density is not a strong predictor for estimating the air
+pollution. The R-squared value of 0.0177 reflects this, showing that
+only a small percentage of the variability in the response variable is
+explained by population density alone.
+
+Coefficient for Urbanization Level: -0.4266 The negative coefficient
+here implies that as the urbanization level increases, the value
+decreases. This could suggest that more urbanized areas are associated
+with lower values of the response variable. The R-squared value of
+0.0629, though higher than that for population density, still accounts
+for only a modest amount of the variance, which indicates that
+urbanization, while a significant factor, is not the sole determinant of
+air pollution levels.
+
+Coefficient for Road Density: 0.6716 This positive coefficient indicates
+that an increase in road density is associated with an increase in the
+response variable. The magnitude of the coefficient suggests a moderate
+relationship, indicating that road density is a good predictor for
+building the air pollution forecasting model. The model's R-squared
+value of 0.0422 supports this, showing that road density explains a
+larger proportion of the variance than population density but is still a
+relatively modest predictor.
+
+Coefficient for Optical Depth: 0.0462 A positive coefficient here
+suggests that higher optical depth readings correlate with higher values
+of the response variable. This relationship is more pronounced compared
+to the previous models, as indicated by the coefficient's magnitude. An
+R-squared value of 0.1224 indicates that optical depth is a significant
+predictor, explaining a more considerable portion of the variance in the
+response variable.
+
+Coefficient for CMAQ: 0.4053 This model shows a significant positive
+relationship between CMAQ values and the response variable, implying
+that higher CMAQ values are associated with higher values of the
+response variable. The R-squared value of 0.2173 is quite significant,
+indicating that this model has a strong predictive power and that CMAQ
+is a robust predictor of air pollution levels.
+
+```{r}
+# Split the dataset into training data and testing data
+set.seed(1234) #ensures we all get the exact same random split
+pm_split <- rsample::initial_split(data = pm, prop = 2/3)
+pm_split
+train_pm <- rsample::training(pm_split)
+test_pm <- rsample::testing(pm_split)
+
+count(train_pm, state)
+```
+
+```{r}
+# Training the random forest model
+model_rf <- randomForest(value ~ popdens_zcta + 
+                        urc2013 + 
+                        log_RoadLength_1kmRadius + 
+                        optical_depth + 
+                        CMAQ, 
+                      data = train_pm)
+
+# Evaluating the model
+predictions_rf <- predict(model_rf, test_pm)
+mae_rf <- mean(abs(predictions_rf - test_pm$value))
+rmse_rf <- sqrt(mean((predictions_rf - test_pm$value)^2))
+
+print(paste("MAE_RF:", mae_rf))
+print(paste("RMSE_RF:", rmse_rf))
+```
+
+```{r}
+# Training the Linear Regression Model 
+model_lm <- lm(value ~ popdens_zcta + 
+                 urc2013 + 
+                 log_RoadLength_1kmRadius + 
+                 optical_depth + 
+                 CMAQ, 
+               data = train_pm)
+
+# Evaluating the model
+predictions_lm <- predict(model_lm, test_pm)
+mae_lm <- mean(abs(predictions_lm - test_pm$value))
+rmse_lm <- sqrt(mean((predictions_lm - test_pm$value)^2))
+
+print(paste("MAE_LM:", mae_lm))
+print(paste("RMSE_LM:", rmse_lm))
+
+```
+
+In order to find a model that can have better accuracy. We used a
+classic ranfom forest model, trained and testes its performance on this
+dataset. Here we splited the Train dataset to be 2/3 of the dataset (584
+observations), and Test dataset is 1/3 of the dataset (292 observations)
+Total (pm): 584+292 = 876 observations.
+
+**Result:** The MAE for the Linear Model is 1.5549, which means that, on
+average, the absolute difference between the predicted and actual values
+is about 1.5549 units. When compared to the Random Forest model (MAE of
+1.4558), the Linear Model has a slightly higher MAE. This suggests that
+the Linear Model, on average, has marginally larger errors in its
+predictions.The RMSE for the Linear Model is 2.1797, indicating that the
+standard deviation of the prediction errors is about 2.1797 units.
+Comparatively, the Random Forest model had an RMSE of 1.9818, which is
+lower than the RMSE of the Linear Model. This indicates that the Linear
+Model has larger prediction errors and is less accurate than the Random
+Forest model, especially when it comes to predicting values with larger
+deviations from the mean.
+
+In conclusion, our Random Forest model uses data about population
+density, urbanization, road density, satellite pollution data, and
+chemical modeling data to predict US annual average air pollution
+concentrations at the granularity of zip code regional levels with great
+accuracy with a MAE of 1.456.
+
+### Extended Data Analysis
+
+Refining our principal analytical question, we now concentrate on the
+relationship between air quality and mortality due to respiratory
+diseases at the state level. This pivot is necessitated by the
+granularity of our newly sourced dataset from the Centers for Disease
+Control and Prevention (CDC), which provides insights into weekly counts
+of deaths by state for select causes, including respiratory diseases.
+
+Our revised hypothesis suggests that states burdened with higher air
+pollutant concentrations will report higher mortality rates from
+respiratory conditions. To test this hypothesis, we will implement
+statistical tests such as t-tests or z-tests. These will compare the
+mean mortality rates across states categorized by varying levels of
+pollution. This statistical approach will elucidate the significance of
+the differences in mortality rates and allow us to assess the public
+health implications of air pollution across the United States.
+
+The CDC dataset is accessible here: [Weekly Counts of Deaths by State
+and Select
+Causes](https://data.cdc.gov/NCHS/Weekly-Counts-of-Deaths-by-State-and-Select-Causes/3yf8-kanr/about_data).
+
+```{r}
+# Data Cleaning for health dataset
+health <- readr::read_csv(here::here("OCS_data", "data","raw", "health_data.csv"))
+health <- health %>%
+  select(`Chronic lower respiratory diseases (J40-J47)`, 
+         `Other diseases of respiratory system (J00-J06,J30-J39,J67,J70-J98)`, 
+         `Jurisdiction of Occurrence`) |>
+  rename(
+    CLow = `Chronic lower respiratory diseases (J40-J47)`,
+    Other = `Other diseases of respiratory system (J00-J06,J30-J39,J67,J70-J98)`,
+    State = `Jurisdiction of Occurrence`
+  )|>
+  filter(State != "United States")|>
+  mutate(across(everything(), ~replace_na(., 0)))|>
+  group_by(State) |>
+  summarise(Other = sum(Other),CLow = sum(CLow))
+
+pm <- readr::read_csv(here::here("OCS_data", "data","raw", "pm25_data.csv"))
+pm_ext <- pm %>%
+  select(state, value) |>
+  rename(State = `state`)|>
+  group_by(State) |>
+  summarise(mean_value = mean(value, na.rm = TRUE))
+
+ext <- left_join(pm_ext, health, by = "State")
+ext <- drop_na(ext)
+ext
+```
+
+To clean the data for our extended analysis, I imported our health data,
+and extracted columns pertinent to chronic lower respiratory diseases,
+other respiratory conditions, and the respective locations. I also
+eliminated entries that aggregated data at the national level, ensuring
+our focus remained state-specific. After addressing missing values by
+substituting them with zeroes, I aggregated disease counts by state.
+Similarly, I processed our PM2.5 dataset to calculate the average
+concentration per state. Merging these datasets on the state attribute
+resulted in a consolidated dataset, 'ext', stripped of any missing
+values, thereby laying a robust foundation for subsequent correlation
+analysis and t-tests.
+
+```{r}
+high_pollution <- ext %>%
+  mutate(high_pollution = mean_value > median(mean_value))
+t_test_result1 <- t.test(CLow ~ high_pollution, data = high_pollution)
+t_test_result2 <- t.test(Other ~ high_pollution, data = high_pollution)
+print(t_test_result1)
+print(t_test_result2)
+```
+
+Here I first binarily labeled all of the States according to how poluted
+it is compared to national average. Then I ran a Two Sample t-tests on
+the relationship between pm2.5 value and both chronic respiratory
+diseases and other repiratory diseases.
+
+**Result:** The results of the Two Sample t-tests indicate that there is
+a statistically significant difference in the mean number of deaths from
+both 'Chronic lower respiratory diseases' (CLow) and 'Other diseases of
+respiratory system' between states classified as having high and low
+pollution levels.
+
+For CLow, the p-value is 0.005602, which is less than the conventional
+alpha level of 0.05, suggesting a significant difference in means.
+Similarly, for the Other category, the p-value is 0.001536, also
+indicating a significant difference in means.
+
+The negative t-values in both tests suggest that the group labeled TRUE
+(states with higher pollution) has higher mean deaths compared to states
+with lower pollution. The confidence intervals do not contain zero,
+further supporting the conclusion that the difference in means is likely
+not due to random chance.
+
+```{r}
+lm_CLow <- lm(CLow ~ mean_value, data = ext)
+summary(lm_CLow)
+
+lm_Other <- lm(Other ~ mean_value, data = ext)
+summary(lm_Other)
+```
+
+```{r}
+ggplot(ext, aes(x = mean_value, y = CLow)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Model of PM2.5 vs Death by Chronic Respiratory Disease",
+       x = "Mean PM 2.5 Value by State",
+       y = "Death by Chronic Respiratory Disease") +
+  theme_minimal()
+
+ggplot(ext, aes(x = mean_value, y = Other)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Model of PM2.5 vs Death by Other Respiratory Disease",
+       x = "Mean PM 2.5 Value by State",
+       y = "Death by Other Respiratory Disease") +
+  theme_minimal()
+```
+
+To further explore the relationship between PM 2.5 levels and the number
+of deaths from respiratory diseases, we conducted linear regression
+analyses.
+
+**Result:** The results indicate a significant positive relationship;
+for every unit increase in PM 2.5, there is an estimated increase of
+3,463 deaths from chronic lower respiratory diseases and 1,107 deaths
+from other respiratory diseases. The R-squared values---0.1625 for CLow
+and 0.2156 for Other---suggest that PM 2.5 levels explain a moderate
+proportion of the variance in mortality rates. Interestingly, the
+negative intercepts imply that the model predicts a negative number of
+deaths at zero PM 2.5 level, highlighting the limitation of using linear
+models for such data and the potential influence of other unaccounted
+factors. Nonetheless, the significant coefficients reaffirm the
+detrimental impact of increased PM 2.5 levels on respiratory health.
+
+Therefore, these results support the hypothesis that higher air
+pollution levels are associated with increased mortality from all kinds
+of respiratory diseases at the state level.
+
+## Conclusion
+
+In our study, we explore the data about the average air pollution
+concentrations across the United States at the granularity of zip code
+regions. The study shows that there is a correlation between PM2.5
+(respirable particulate matter) concentrations in different regions of
+the United States and factors such as population density, level of
+urbanization, road density, optical depth, and CMAQ model values.
+Through a linear regression analysis using the R language, we can see
+that After our prediction we found a moderate positive correlation
+between road density and PM2.5 values, implying that areas with higher
+road density may have more air pollution due to vehicle emissions.
+Meanwhile, there is a strong positive correlation between the CMAQ model
+values and PM2.5 values, indicating that the CMAQ model is a powerful
+predictive tool that can accurately predict PM2.5 pollution levels. In
+terms of model evaluation, the Random Forest model performed slightly
+better than the linear regression model with lower MAE and RMSE values,
+indicating that it has better predictive accuracy and generalization
+ability when dealing with this type of data. Although the factors had
+different levels of influence on PM2.5 pollution levels, the CMAQ model
+and road density were two important predictors.
+
+Our extended analysis focused on the hypothesis of the study was that
+states with higher concentrations of air pollutants would report higher
+mortality rates from respiratory diseases. To test this hypothesis, we
+implemented t-test and linear regression model to compare average
+mortality rates between states with pollution levels. These statistical
+methods will shed light on differences in mortality rates and allow us
+to assess the public health impacts of air pollution across the United
+States. The results of the study show that there are statistically
+significant differences, with higher mortality rates due to chronic
+lower respiratory disease and other respiratory illnesses in states with
+higher concentrations of pm 2.5.
+
+### References
+
+1.  Frontiers \| Environmental and Health Impacts of Air Pollution: A
+    Review.
+    <https://www.frontiersin.org/articles/10.3389/fpubh.2020.00014/full.Final>
+    Report
+
+2.  Yanosky, J. D. et al. Spatio-temporal modeling of particulate air
+    pollution in the conterminous United States using geographic and
+    meteorological predictors. Environ. Health 13, 63 (2014).
+
+3.  Ellis, P. S. COGS 137 - 15-cs02-data.
+    <https://cogs137.github.io/website/content/lectures/15-cs02-data.html#pm-2.5-data>
+    (2023).
+
+4.  Weekly Counts of Deaths by State and Select Causes, 2014-2019 \|
+    Data \| Centers for Disease Control and Prevention.
+    <https://data.cdc.gov/NCHS/Weekly-Counts-of-Deaths-by-State-and-Select-Causes/3yf8-kanr/about_data>.
